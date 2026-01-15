@@ -1,11 +1,50 @@
 ---
-title: "Part C - Shiny Dashboard"
+title: "Data View"
+format: dashboard
+runtime: shiny
 ---
 
-This is a Quarto website.
+```{r}
+library(DBI)
+library(RSQLite)
+library(DT)
 
-To learn more about Quarto websites visit <https://quarto.org/docs/websites>.
+con <- dbConnect(SQLite(), "data/virtual_production.db")
+
+```
+
+## Database Tables
 
 ```{r}
-1 + 1
+tabsetPanel(
+tabPanel(
+"Productions",
+DT::datatable(
+dbGetQuery(con, "SELECT * FROM Productions"),
+options = list(pageLength = 10)
+)
+),
+tabPanel(
+"Clients",
+DT::datatable(
+dbGetQuery(con, "SELECT * FROM Clients"),
+options = list(pageLength = 10)
+)
+),
+tabPanel(
+"Crew Members",
+DT::datatable(
+dbGetQuery(con, "SELECT * FROM CrewMembers"),
+options = list(pageLength = 10)
+)
+),
+tabPanel(
+"Assets",
+DT::datatable(
+dbGetQuery(con, "SELECT * FROM Assets"),
+options = list(pageLength = 10)
+)
+)
+)
+
 ```
