@@ -1,0 +1,152 @@
+---
+title: "Plot View"
+format: dashboard
+runtime: shiny
+---
+
+```{r}
+library(shiny)
+library(DBI)
+library(RSQLite)
+library(tidyverse)
+library(ggplot2)
+
+con <- dbConnect(SQLite(), "data/virtual_production.db")
+
+```
+
+
+```{r}
+dateRangeInput(
+"date_range",
+"Select Production Completion Date Range:",
+start = "2022-01-01",
+end = "2025-12-31"
+)
+
+sliderInput(
+"min_budget",
+"Minimum Budget:",
+min = 0,
+max = 1000000,
+value = 0,
+step = 50000
+)
+
+```
+
+## Budget vs Completion Date
+
+
+```{r}
+renderPlot({
+data <- dbGetQuery(con, "
+SELECT Title, Budget, EndDate
+FROM Productions
+")
+
+data$EndDate <- as.Date(data$EndDate)
+
+filtered <- data %>%
+filter(
+EndDate >= input$date_range[1],
+EndDate <= input$date_range[2],
+Budget >= input$min_budget
+)
+
+ggplot(filtered, aes(x = EndDate, y = Budget)) +
+geom_point(size = 3) +
+labs(
+title = "Production Budget by Completion Date",
+x = "Completion Date",
+y = "Budget"
+) +
+theme_minimal()
+})
+
+```
+
+## Asset Counts by Production
+
+
+```{r}
+selectInput(
+"asset_type",
+"Select Asset Type:",
+choices = c("3D Model", "Animation", "Texture", "Blueprint", "HDRI"),
+selected = "3D Model"
+)
+
+checkboxInput(
+"show_counts",
+"Show Asset Counts",
+value = TRUE
+)
+
+```
+
+```{r}
+renderPlot({
+data <- dbGetQuery(con, "
+SELECT a.AssetType, p.Title
+FROM Assets a
+JOIN Environments e ON a.EnvironmentID = e.EnvironmentID
+JOIN Productions p ON e.ProductionID = p.ProductionID
+")
+
+filtered <- data %>%
+filter(AssetType == input$asset_type)
+
+plot_data <- filtered %>%
+count(Title)
+
+ggplot(plot_data, aes(x = reorder(Title, n), y = n)) +
+geom_col() +
+coord_flip() +
+labs(
+title = paste("Asset Count for", input$asset_type),
+x = "Production",
+y = "Number of Assets"
+) +
+theme_minimal()
+})
+
+```
+
+## Crew Member Participation
+
+
+```{r}
+selectInput(
+"crew_member",
+"Select Crew Member:",
+choices = dbGetQuery(con, "SELECT Name FROM CrewMembers")$Name
+)
+
+```
+
+```{r}
+renderPlot({
+data <- dbGetQuery(con, "
+SELECT cm.Name, p.Title
+FROM CrewMembers cm
+JOIN ProductionCrew pc ON cm.CrewID = pc.CrewID
+JOIN Productions p ON pc.ProductionID = p.ProductionID
+")
+
+filtered <- data %>%
+filter(Name == input$crew_member) %>%
+count(Title)
+
+ggplot(filtered, aes(x = Title, y = n)) +
+geom_col() +
+labs(
+title = paste("Productions Involving", input$crew_member),
+x = "Production",
+y = "Participation Count"
+) +
+theme_minimal()
+})
+
+```
+

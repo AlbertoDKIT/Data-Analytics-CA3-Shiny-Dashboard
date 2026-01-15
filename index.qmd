@@ -5,6 +5,7 @@ runtime: shiny
 ---
 
 ```{r}
+library(shiny)
 library(DBI)
 library(RSQLite)
 library(DT)
